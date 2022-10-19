@@ -1,0 +1,136 @@
+---
+title: "exo5-TP2"
+author: "Marcel MOUDILA, GANTOUNKPO mafoya Jean Noel"
+date: "2022-10-18"
+output: pdf_document
+---
+# 5) Modèle de classification
+
+On importe datacancer2 crée et sauvegardé lors du TP1, il contient la variable cible
+Y (Surv12) ainsi que les covariables sélectionnées par la méthode de Benjamini Hochberg
+. datacancer2 possède des valeurs manquantes, nous supprimons les lignes ayant au moins une valeur manquante.
+
+
+```{r}
+
+#importation du jeu de donnees
+datacancer2 <- read.csv2("~/Documents/MCAD Marcel/Stat de grande dimension/TP2/datacancer2.csv")
+datacancer2 = datacancer2[,-1]
+
+
+#suppression des valeurs manquantes
+ind=which(apply(is.na(datacancer2),1,sum)==0)
+datacancer2 = datacancer2[ind,]
+
+
+print(dim(datacancer2))
+```
+
+
+On partage datacancer2 en deux dataset , une pour les données d'apprentissage , une pour les données de test. 
+
+```{r}
+set.seed(42)
+perm = sample(1:nrow(datacancer2),size=nrow(datacancer2)*0.80)
+train = datacancer2[perm,]
+test = datacancer2[-perm,]
+```
+
+On regarde la distribution de la variable cible Y et on estime les paramètres d'un modèle de régression logistique.
+
+```{r}
+plot(train$Y)
+myreg <- glm(Y ~.,data = train, family=binomial(link=logit))
+summary(myreg)
+```
+
+
+On fait le choix du modèle en utilisant différentes méthodes aves les données 
+d'apprentissage.
+
+### 1) Apply forward and backward methods to select variables in the logistic model
+
+```{r include=FALSE}
+reg0<-glm(Y ~1 , data=train,family=binomial(link=logit))
+reg1<-glm(Y  ~. , data=train,family=binomial(link=logit))
+select1<-step(reg0, scope=formula(reg1), direction="forward",k=2)
+
+
+select2<-step(reg1, scope=formula(reg0), direction="backward",k=2)
+
+
+```
+
+les variables étant nombreuses, j'ai coché dans R Markdown l'option qui cache les sorties. Regardons le summary pour chaque méthode, et les valeurs prédites sur les données test pour chaque méthode
+
+
+```{r}
+#with forward
+summary(select1)
+pred1 = predict(select1, newdata = test,type = "response")
+
+#with backward
+summary(select2)
+pred2 = predict(select2, newdata = test,type = "response")
+```
+
+
+### 2) Construct the confusion matrix and the roc curves of the two resulting models
+
+On utilise la librairie pROC et la documentaire de cette librairie incluse dans Rstudio pour tracer la courbe ROC et renseigner les informations utiles comme l'aire sous la coube ROC (AUC). 
+
+Le modèle fourni par la méthode forward (covariables : AST__SGOT__class + CYFRA2_1_1 + OTH + HISTO_Gil + White_Blood_Cell_Count + Platelet_Count + POSCEL+Alkaline_Phosphatase + Ca__ + Red_Blood_Cell_class + CA_19_9) a une AUC égal à 0.73
+    
+Le modèle fourni par la méthode backward (covariables : SEX + LIVER + OTH + Red_Blood_Cell_class + NBINJ + CD16 + MaxLD + NBOTH + NBORG + ALT__SGPT_ + AST__SGOT_ +
+CD4__T + Gamma_GT + Glycemia + Serum_Creatinine) a une AUC égale à 0.59
+
+On utilise la librairie caret pour obtenir la matrice de confusion. 
+
+```{r}
+library(pROC)
+
+#with forward
+plot.roc(test$Y,pred1,print.auc=TRUE,auc.polygon=TRUE)
+
+#with backward
+plot.roc(test$Y,pred2,print.auc=TRUE,auc.polygon=TRUE)
+
+#confusion matrix
+library(caret)
+truth = factor(test$Y)
+
+#with forward
+pred1 = factor(ifelse(pred1 > 0.5,"1","0"))
+xtab1 = confusionMatrix(truth,pred1)
+print(xtab1$table)
+
+#with backward
+pred2 = factor(ifelse(pred2 > 0.5,"1","0"))
+xtab2 = confusionMatrix(truth,pred2)
+print(xtab2$table)
+
+
+```
+### 3 Compare these two models by cross-validation using the rate of well classified as a criterion. Do the same with AUC as criteria.
+
+le taux de bonne clissification est la somme des élements diagonaux sur la matrice de confusion divisé par le nombre d'instance du data test. Donc pour le modèle obtenu avec forward c'est  0.69 (9/13) et pour le modèle obtenu avec backward c'est 0.61 (8/13)
+
+```{r}
+#with forward
+print(xtab1)
+
+#with backward
+print(xtab2)
+```
+
+### 4) Choose the best model to predict the survival.
+
+Le meilleur modèle de régression logistique est celui fourni par forward car son AUC (0.73) est la plus proche de 1 que l'AUC (0.59) pour le modèle fourni par le modèle de backward. 
+
+On fait le même choix aussi avec Accuracy comme critère. Accuracy modèle de forward (0.69) est supérieur à l'Accuracy (0.61) du modèle de backward. 
+
+on affiche alors ce meilleur modèle pour prédire Survival
+```{r}
+#winner 
+print(select1$call)
+```

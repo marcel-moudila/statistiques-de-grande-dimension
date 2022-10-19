@@ -1,0 +1,550 @@
+---
+title: "TP1 stat de grande dimension"
+author: "Marcel MOUDILA, GANTOUNKPO mafoya Jean Noel"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+# 2 Multiple testing and p-values
+
+## 1) Simulate a vector of binary variable Y of size n = 50, 100, 200
+```{r}
+n<-50
+prob <- 0.4
+Y<-(runif(n,0,1)<prob)*1
+#print(Y)
+length(Y)
+```
+## 2) Simulate a matrix of quantitatives covariates X of size n = 50 and p = 100 that is not linked to Y
+```{r}
+p <- 100
+X <- matrix(rnorm(n*p,0,1), ncol=p)
+#print(X)
+dim(X)
+```
+## 3) What is the appropriate test to verify if one covariate is linked to Y ?
+
+the appropriate test to verify if one covariate is linked to Y is Student's t-Test
+
+## 4) Perform the test for each covariate and save the p-values in a vector. What is the min and the max of the p-values ? Plot the histogram. Comment.
+```{r}
+pvalue <- c()
+for (i in 1:p){
+  df = data.frame(column1 = Y, column2 = X[,i])
+  Test = t.test(df$column2[which(df$column1==1)],
+                df$column2[which(df$column1==0)],
+                level = 0.95)
+  pvalue <- c(pvalue,Test$p.value)
+}
+print(summary(pvalue))
+hist(pvalue,20,main="p-value test de lien entre X et Y")
+```
+
+The covoriates are not linked with Y normally, but there is the tests with p-value < 0.05, so there is the False Positive Significant tests.
+
+## 5) Compute the number of False Positive Significant tests for a level alpha
+```{r}
+FP = length(which(pvalue < 0.05)) # false positive
+print(FP)
+```
+
+## 6) Compute the empirical type I error and compare to alpha 
+
+The empirical type I error is as the number of False Positive Significant tests
+
+```{r}
+empirical_type1_error = FP/p
+print(empirical_type1_error)
+```
+
+
+## 7) Do it again for p = 1000 and p = 10000
+
+## 8) We want now to simulate a matrix X of covariates of size n = 50 and p1 = 100 that are linked with Y by the following way
+
+## a) matrix X1, and min, max, histogram of p-value's vector and number of Significant tests and the empirical power of the test
+```{r}
+p1 = 100
+vect = c()
+for (j in 1:p1){
+Z <- (runif(n,0,1)<0.7)*1
+obs <- Z*rnorm(n,3*Y,1) + (1-Z)*rnorm(n,0,1) #obs : n realisations de X_j
+vect = c(vect,obs)
+}
+X1 <- matrix(vect,ncol=p1)
+#print(X1)
+print(dim(X1))
+
+
+pvalue <- c()
+for (i in 1:p1){
+  df = data.frame(column1 = Y, column2 = X1[,i])
+  Test = t.test(df$column2[which(df$column1==1)],
+                df$column2[which(df$column1==0)],
+                level = 0.95)
+  pvalue <- c(pvalue,Test$p.value)
+}
+pv1 = pvalue
+print(summary(pv1))
+hist(pv1,20,main="p-value test colonnes de X1 et Y",col = "blue")
+print(length(which(pv1 < 0.05))) # number of significant tests
+
+
+```
+The covariates are linked with Y normally. Exactly, we see it because most p-value < 0.05
+
+## b) other matrice X2, and min, max, histogram of p-value's vector and number of Significant tests and the empirical power of the test
+
+```{r}
+vect = c()
+for (j in 1:p1){
+Z <- (runif(n,0,1)<0.7)*1
+obs <- Z*rnorm(n,2*Y,1) + (1-Z)*rnorm(n,0,1) #obs : n realisations de X_j
+vect = c(vect,obs)
+}
+X2 <- matrix(vect,ncol=p1)
+#print(X2)
+print(dim(X2))
+
+
+pvalue <- c()
+for (i in 1:p1){
+  df = data.frame(column1 = Y, column2 = X2[,i])
+  Test = t.test(df$column2[which(df$column1==1)],
+                df$column2[which(df$column1==0)],
+                level = 0.95)
+  pvalue <- c(pvalue,Test$p.value)
+}
+pv2 = pvalue
+print(summary(pv2))
+hist(pv2,20,main="p-value test colonnes de X2 et Y",col = "blue")
+print(length(which(pv2 < 0.05))) # number of significant tests
+```
+
+The covariates are linked with Y normally. Exactly, we see it because most p-value < 0.05
+
+## c) other matrice X3, and min, max, histogram of p-value's vector and number of Significant tests and the empirical power of the test
+
+```{r}
+vect = c()
+for (j in 1:p1){
+Z <- (runif(n,0,1)<0.7)*1
+obs <- Z*rnorm(n,1*Y,1) + (1-Z)*rnorm(n,0,1) #obs : n realisations de X_j
+vect = c(vect,obs)
+}
+X3 <- matrix(vect,ncol=p1)
+#print(X3)
+print(dim(X3))
+
+
+pvalue <- c()
+for (i in 1:p1){
+  df = data.frame(column1 = Y, column2 = X3[,i])
+  Test = t.test(df$column2[which(df$column1==1)],
+                df$column2[which(df$column1==0)],
+                level = 0.95)
+  pvalue <- c(pvalue,Test$p.value)
+}
+pv3 = pvalue
+print(summary(pv3))
+hist(pv3,20,main="p-value test colonnes de X3 et Y",col = "blue")
+print(length(which(pv3 < 0.05))) # number of significant tests
+```
+
+The covariates are linked with Y normally. Exactly, we see it because most p-value < 0.05
+
+## d) other matrice X4, and min, max, histogram of p-value's vector and number of Significant tests and the empirical power of the test
+
+```{r}
+vect = c()
+for (j in 1:p1){
+Z <- (runif(n,0,1)<0.3)*1
+obs <- Z*rnorm(n,3*Y,1) + (1-Z)*rnorm(n,0,1) #obs : n realisations de X_j
+vect = c(vect,obs)
+}
+X4 <- matrix(vect,ncol=p1)
+#print(X4)
+print(dim(X4))
+
+
+pvalue <- c()
+for (i in 1:p1){
+  df = data.frame(column1 = Y, column2 = X4[,i])
+  Test = t.test(df$column2[which(df$column1==1)],
+                df$column2[which(df$column1==0)],
+                level = 0.95)
+  pvalue <- c(pvalue,Test$p.value)
+}
+pv4 = pvalue
+print(summary(pv4))
+hist(pv4,20,main="p-value test colonnes de X4 et Y",col = "blue")
+print(length(which(pv4 < 0.05))) # number of significant tests
+```
+
+The covariates are linked with Y normally. Exactly, we see it because most p-value < 0.05
+
+## e) other matrice X5, and min, max, histogram of p-value's vector and number of Significant tests and the empirical power of the test
+
+```{r}
+vect = c()
+for (j in 1:p1){
+Z <- (runif(n,0,1)<0.3)*1
+obs <- Z*rnorm(n,2*Y,1) + (1-Z)*rnorm(n,0,1) #obs : n realisations de X_j
+vect = c(vect,obs)
+}
+X5 <- matrix(vect,ncol=p1)
+#print(X5)
+print(dim(X5))
+
+
+pvalue <- c()
+for (i in 1:p1){
+  df = data.frame(column1 = Y, column2 = X5[,i])
+  Test = t.test(df$column2[which(df$column1==1)],
+                df$column2[which(df$column1==0)],
+                level = 0.95)
+  pvalue <- c(pvalue,Test$p.value)
+}
+pv5 = pvalue
+print(summary(pv5))
+hist(pv5,20,main="p-value test colonnes de X5 et Y",col = "blue")
+print(length(which(pv5 < 0.05))) # number of significant tests
+```
+
+The covariates are linked with Y normally. Exactly, we see it because most p-value < 0.05
+
+## f) other matrice X6, and min, max, histogram of p-value's vector and number of Significant tests and the empirical power of the test
+
+```{r}
+vect = c()
+for (j in 1:p1){
+Z <- (runif(n,0,1)<0.3)*1
+obs <- Z*rnorm(n,1*Y,1) + (1-Z)*rnorm(n,0,1) #obs : n realisations de X_j
+vect = c(vect,obs)
+}
+X6 <- matrix(vect,ncol=p1)
+#print(X6)
+print(dim(X6))
+
+
+pvalue <- c()
+for (i in 1:p1){
+  df = data.frame(column1 = Y, column2 = X6[,i])
+  Test = t.test(df$column2[which(df$column1==1)],
+                df$column2[which(df$column1==0)],
+                level = 0.95)
+  pvalue <- c(pvalue,Test$p.value)
+}
+pv6 = pvalue
+print(summary(pv6))
+hist(pv6,20,main="p-value test colonnes de X6 et Y",col = "blue")
+print(length(which(pv6 < 0.05))) # number of significant tests
+```
+
+## g) Comment the results
+
+le nombre de tests significatifs diminue
+
+## h) for n = 100, and for n = 200
+
+## 9) Compute the vector of the p-values of the 600 tests that test the link between the Xj and Y. Look and the min, the max and do the histplot, comment
+
+```{r}
+pv7 = c(pv1,pv2,pv3,pv4,pv5,pv6) 
+length(pv7)
+print(summary(pv7))
+boxplot(pv1,pv2,pv3,pv4,pv5,pv6)
+hist(pv7,20,main="p-value test colonnes de X et Y",col = "blue")
+
+```
+## 10) Compute the vector of the p-values of the other 600 tests that test the link between the Xj and Y. Look and the min, the max and do the histplot, comment
+
+simulate 600 other covariates independent from Y .
+
+```{r}
+p <- 6*p1
+X7 <- matrix(rnorm(n*p,0,1), ncol=p)
+
+```
+
+
+
+```{r}
+pvalue <- c()
+for (i in 1:p){
+  df = data.frame(column1 = Y, column2 = X7[,i])
+  Test = t.test(df$column2[which(df$column1==1)],
+                df$column2[which(df$column1==0)],
+                level = 0.95)
+  pvalue <- c(pvalue,Test$p.value)
+}
+pv8 = pvalue
+summary(pv8)
+hist(pv8,20,main="p-value test others colonnes de X et Y",col = "red")
+```
+
+## 11) Aggregate the two vectors of the p-values and look and the min, the max and do the histplot,comment
+
+```{r}
+pv9 = c(pv7,pv8)
+length(pv9)
+print(summary(pv9))
+boxplot(pv7,pv8, col=c("blue","red"))
+hist(pv9,20,main="p-value test all colonnes de X et Y")
+#pv9 : all p-values's vector (question 11)
+#pv8 : when X_j are not linked with Y (question 10)
+#pv7 : whan X_j  are linked with Y (question 9)
+```
+
+
+## 12) Choose a risk alpha for each test and compute each entry of the following table (frequencies associated with the test's decisions). Remember what is fixed and what is dependent of the simulation.
+
+```{r}
+S = length(which(pv7 < 0.05))   # vrai positif
+print("S : nombre de vrais positifs")
+S
+
+V = length(which(pv8 < 0.05))   # faux positifs
+print("V : nombre de faux positifs")
+V
+
+#R = length(which(pv9 < 0.05))   # positif
+R = S+V
+print("R : nombre de tests positifs")
+R
+
+U = length(which(pv8 > 0.05 ))  # faux négatifs
+print("U : faux negatifs")
+U
+
+T = length(which(pv7 > 0.05)) # negatif
+print("T : nombre de tests negatifs")
+T
+
+```
+
+# 3. Adjusted p-values
+
+## 1. a) For each of the method, Bonferroni, Sidak, Holms and Bejamini-Hochberg, compute the vector of adjusted p-values, look at the min, the max, plot the histogram and comment
+
+```{r}
+print("bonferroni's method")
+adj.pv = p.adjust(pv9, method = "bonferroni")
+summary(adj.pv)
+hist(adj.pv,20, main = "with benferroni's method ")
+Bonferroni = adj.pv
+
+print("Sidak's method")
+adj.pv = 1-(1-pv9)**length(pv9)
+summary(adj.pv)
+hist(adj.pv,20,  main = "with Sidak's method ")
+Sidak = adj.pv
+
+print("holm's method")
+adj.pv = p.adjust(pv9, method = "holm")
+summary(adj.pv)
+hist(adj.pv,20, main = " with holm's method ")
+Holm = adj.pv
+
+print("BH's method")
+adj.pv = p.adjust(pv9, method = "BH")
+summary(adj.pv)
+hist(adj.pv,20, main = " with BH's method ")
+BH = adj.pv
+
+```
+
+## b) Compare the previous methods by plotting the point clouds of each method 2 to 2.
+
+```{r}
+pairs(cbind(Bonferroni,Sidak,Holm,BH))
+```
+
+
+## c) after installation package qvalue
+
+```{r}
+library(qvalue)
+
+```
+
+## d) Compute the qvalues by the following code and do the table and the comparison
+
+```{r}
+pval2 = pv9
+qvalcom<-qvalue(pval2)
+qval<-qvalcom$qvalues
+summary(qval)
+hist(qval, 20, main = "q-value")
+```
+# 2.
+```{r}
+p = length(pv9)
+lambda = 0.25
+pi0 = (V+U)/p
+print("pi0")
+pi0
+pi0.estime = length(which(pv9 > lambda))/(p*(1-lambda))
+print("pi0 estimee")
+pi0.estime
+```
+
+# 4. Application to real data
+
+On importe le jeu de données datacancer, il a au départ 143 lignes et 104 colonnes. On fait une analyse pour les types de données.
+On constate que beaucoup de colonnes sont de type "character", on les transforme alors
+en "factor". On décide d'identifier et de supprimer les colonnes de type factor qui ont qu'une seule modalité. datacancer a maintenant 143 lignes et 98 colonnes.
+
+```{r}
+datacancer <- read.csv("~/Documents/MCAD Marcel/Stat de grande dimension/TP1/datacancer.csv")
+
+dim(datacancer)
+
+
+#str(datacancer)
+
+ind = NULL
+for (j in 1: ncol(datacancer)){
+  if (is.character(datacancer[,j])){
+    datacancer[,j] = factor(datacancer[,j])
+  }
+  if (length(levels(datacancer[,j]))==1){
+    ind = c(ind,j)
+  }
+}
+#print(ind)
+datacancer = datacancer[,-ind]
+dim(datacancer)
+
+
+```
+
+On identifie la variable Y comme cible, on a envie de voir les tables de contingence de Y avec chaque variable catégorielle d'au moins 3 modalités pour vérifier les conditions de faisabilité du test de khi-deux qui impose que les effectifs soient supérieurs à 5.
+
+```{r}
+Y = factor(datacancer$Surv12)
+for (j in 1: ncol(datacancer)){
+  if (is.factor(datacancer[,j])){
+    if (length(levels(datacancer[,j]))>2){
+      print(j)
+      print(table(Y,datacancer[,j]))
+    }
+  }
+}
+```
+
+On regroupe les modalités de certaines variables catégorielles afin qu'on puisse
+avoir les conditions du test de Khi-2 ou du test exact de Fisher vérifiées.
+
+```{r}
+
+levels(datacancer[,12])[c(2,3)] = c("positive_unknow")
+levels(datacancer[,13])[c(1,2,3,4)] = c("autres_stages")
+levels(datacancer[,19])[c(2,3,4)] = c("autres")
+levels(datacancer[,32])[c(1,2,3)] = c("autres")
+levels(datacancer[,34])[c(1,2)] = c("autres")
+levels(datacancer[,33])[c(1,2,3)] = c("autres")
+levels(datacancer[,35])[c(2,3)] = c("autres")
+levels(datacancer[,39])[c(1,2)] = c("autres")
+levels(datacancer[,42])[c(1,2)] = c("autres")
+levels(datacancer[,45])[c(1,2)] = c("autres")
+levels(datacancer[,46])[c(1,2)] = c("autres")
+levels(datacancer[,49])[c(1,2)] = c("autres")
+levels(datacancer[,50])[c(1,2,3)] = c("autres")
+levels(datacancer[,51])[c(1,2)] = c("autres")
+
+Y = factor(datacancer$Surv12)
+for (j in 1: ncol(datacancer)){
+  if (is.factor(datacancer[,j])){
+    if (length(levels(datacancer[,j]))>=2){
+      print(j)
+      print(table(Y,datacancer[,j]))
+    }
+  }
+}
+
+```
+
+On supprime les colonnes 1, 2 qui sont juste des identifiants, on enlève aussi
+la colonne 6 et la colonne 7, qui correspondent respectivement à Surv6 et à Surv12, car ce sont  des variables d'intérêts. On enlève aussi les colonnes 5 (censoros) et 8 (censorTRT), de même que les colonnes 3 (TRT) et 4 (OS). On crée un nouveau datacancer
+où la première colonne est la variable cible suivie dans l'ordre des covariables qualitatives (au nombre de 46) puis des covariables quantitatives (au nombre de 44).
+
+```{r}
+datacancer = datacancer[-c(1,2,3,4,5,6,7,8)]
+
+ind_qual <- sapply(datacancer, function(x) is.factor(x))
+qual <- datacancer[ ,ind_qual]
+
+ind_quant <- sapply(datacancer, function(x) is.numeric(x))
+quant <- datacancer[ ,ind_quant]
+
+datacancer = cbind(Y,qual,quant)
+dim(datacancer)
+```
+
+### 1) Select the qualitative covariates and perform the appropriate tests to see the link with Surv12. Save the p-values in a vector.
+
+On fait un test exact de Fisher dans le cas où la table de contingence est de taille 2x2 et au moins un effectif est plus petit que 5.
+On fait un test de Khi-deux dans le cas où la table de contingence a tous les effectfs supérieurs à 5.
+Lorsque la covariable a au moins 3 modalités, on regroupe certaines modalités si on ne peut pas faire (sans erreur) le test de Khi-deux
+
+```{r}
+
+pval.qual = NULL
+for(j in 1:ncol(qual)){
+  tab = table(Y,qual[,j])
+  if (length(levels(qual[,j]))==2){
+    if ((tab[1,1]<=5 || tab[1,2]<=5) ||( tab[2,1]<=5 || tab[2,2]<=5)){
+      test = fisher.test(Y,qual[,j])
+      pval.qual = c(pval.qual,test$p.value)
+    }
+    else{
+      test = summary(tab)
+      pval.qual = c(pval.qual,test$p.value)
+    }
+  }
+  else{
+    test = summary(tab)
+      pval.qual = c(pval.qual,test$p.value)
+  }
+}
+print(summary(pval.qual))
+hist(pval.qual,20,main="p-value test de lien entre Y et les X_j catégorielles",
+     col = "yellow")
+```
+
+### 2 ) Select the quantitative covariates and perform the appropriate tests to see the link with Surv12. Save the p-values in a vector
+
+On fait un test de comparaison de deux moyennes. 
+
+```{r}
+pval.quant = NULL
+Y = as.numeric(Y)
+for (j in 1:ncol(quant)){
+  test = t.test(Y,quant[,j])
+  pval.quant = c(pval.quant,test$p.value)
+}
+print(summary(pval.quant))
+hist(pval.quant,20,main="p-value test de lien entre Y et les X_j quantitatives",
+     col = "green")
+```
+
+### 3) Aggregate the two vectors and adjust the p-values with different methods. Gives the variables that can explain the survival.
+
+On ajuste les p-valeurs (on les augmente) car on fait des tests multiples. Quelque soit la méthode ("holm", "hochberg", "hommel", "bonferroni", "BH", "BY", etc), les tests significatifs sont ceux dont la p-value ajustée est inférieur à 0.05.
+On crée un code pour récupérer les variables significatives (p-value ajustée < 0.05)
+
+```{r}
+print("BH's method")
+adj.pv = p.adjust(c(pval.qual,pval.quant), method = "BH")
+hist(adj.pv,20, main = "with BH's method ")
+summary(adj.pv)
+indice_variable_expl = which(adj.pv < 0.05)+1
+datacancer2 = datacancer[c(1,indice_variable_expl)]
+dim(datacancer2)
+colnames(datacancer2)
+# sauvegarde du dataset avec Surv12 et les variables selectionnees
+write.csv2(datacancer2, file ="datacancer2.csv")
+```
