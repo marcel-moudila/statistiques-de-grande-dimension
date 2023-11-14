@@ -1,0 +1,73 @@
+---
+title: "TP5 - Statistiques"
+author: "MOUDILA Marcel"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+### Exercice 3 : Use Package 
+
+
+```{r}
+data = load("diabetes.rdata")
+```
+
+```{r}
+View(diabetes)
+```
+
+```{r}
+str(diabetes)
+```
+
+```{r}
+matcor<-cor(diabetes[,1:8])
+matcor
+```
+
+```{r}
+library(visdat)
+vis_miss(diabetes)
+```
+
+```{r}
+matcor <- cor(diabetes[,1:8], use="pairwise.complete.obs")
+matcor
+```
+
+```{r}
+for (i in 1:8){
+boxplot(diabetes[,i], diabetes[,9],main=paste("lien","diabetes -",
+colnames(diabetes)[i]),xlab= "Diabete",ylab=colnames(diabetes)[i])
+}
+```
+
+```{r message=FALSE}
+library(missMDA)
+library(missForest)
+library(VIM)
+```
+
+```{r}
+res.aggr<-aggr(diabetes)
+```
+```{r}
+res.aggr$missings
+```
+```{r}
+cbind(res.aggr$tabcomb,res.aggr$percent)
+```
+```{r}
+var.na<-which(res.aggr$missings$Count>0)
+var.na
+```
+
+```{r}
+pattern<- is.na(diabetes[,var.na])
+pattern[1:5,]
+```
+```{r}
+library(DescTools)
+matcram<-PairApply(pattern,CramerV)
+#matcram<-parLapply(pattern,CramerV)
+```
+

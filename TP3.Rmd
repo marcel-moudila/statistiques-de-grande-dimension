@@ -1,0 +1,42 @@
+---
+title: "TP3-MOUDILA-Marcel"
+author: "MOUDILA Marcel"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+### **variables selection with ridge and Lasso penalisation**
+
+##### Exercice 1: Ridge regression - Simulations
+
+2).
+
+```{r include=FALSE}
+set.seed(1)
+x1 <- rnorm(20)
+x2 <- rnorm(20,mean=x1,sd=.01)
+x<-cbind(x1,x2)
+y <- rnorm(20,mean=3+x1+x2)
+```
+
+```{r}
+x1
+x2
+y
+```
+
+```{r echo=FALSE}
+reg <- lm(y~x1+x2)
+reg$coefficients
+```
+
+quand x1 augmente d'une unité, y augmente en moyenne de 22.60, quand x2 augmente d'une unité, y diminue en moyenne de 20.38
+
+```{r echo=TRUE}
+lm.ridge(y~x1+x2, lambda = seq(0,1,0.05))
+```
+
+Plus on augmente la valeur de lambda , le coefficient $\beta{1}$ dimininue, et le coefficient $\beta{2}$ augmente. L'écart entre les deux coefficients diminue également.

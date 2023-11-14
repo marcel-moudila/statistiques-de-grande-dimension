@@ -1,0 +1,63 @@
+---
+title: "TP2-stat-grande-dim"
+output: pdf_document
+date: "2022-09-28"
+---
+# 5) Modèle de classification
+
+```{r}
+datacancer <- read.csv("~/Documents/MCAD Marcel/Stat de grande dimension/TP2/datacancer.csv")
+#View(datacancer)
+datacancer2 = datacancer[-c(1,2,6,7)]
+datacancer2$censoros = factor(datacancer2$censoros)
+datacancer2$censorTRT = factor(datacancer2$censorTRT)
+
+Surv12 = factor(datacancer$Surv12)
+qual <- sapply(datacancer2, function(x) is.character(x))
+datacancer2.qual <- datacancer2[ ,qual]
+p = dim(datacancer2.qual)[2]
+pval.qual = NULL
+for (j in 1:p){
+tab = table(Surv12,datacancer2.qual[,j])
+khi2 = summary(tab)
+pval.qual = c(pval.qual,khi2$p.value)
+}
+
+Surv12 = datacancer$Surv12
+quant <- sapply(datacancer2, function(x) is.numeric(x))
+datacancer2.quant <- datacancer2[ ,quant]
+p = dim(datacancer2.quant)[2]
+pval.quant = NULL
+for (j in 1:p){
+test.moy = t.test(datacancer2.quant[,j][which(Surv12 == 0)],
+                  datacancer2.quant[,j][which(Surv12 == 1)])
+pval.quant = c(pval.quant,test.moy$p.value)
+}
+
+datacancer3 = cbind.data.frame(datacancer2.qual,datacancer2.quant)
+print("BH's method")
+adj.pv = p.adjust(c(pval.qual,pval.quant), method = "BH")
+indice_variable_expl = which(adj.pv < 0.05)
+str(datacancer3[indice_variable_expl])
+frame = cbind.data.frame(Surv12 = datacancer$Surv12,datacancer3[indice_variable_expl])
+```
+
+```{r}
+ind=which(apply(is.na(frame),1,sum)==0)
+datacancer4 = frame[ind,]
+View(datacancer4)
+```
+
+
+## 1) Apply forward and backward methods to select variables in the logistic model
+
+```{r warning=FALSE}
+reg0<-glm(Surv12 ~ 1 , data=datacancer4,family=binomial(link = logit))
+reg1<-glm(Surv12 ~ . , data=datacancer4,family=binomial(link = logit))
+print("forward's method")
+forward <-step(reg0, scope=formula(reg1), direction="forward",k=2)
+print("backward's method")
+backward<- step(reg1, scope=formula(reg0), direction="backward",k=2)
+
+```
+## 2) 

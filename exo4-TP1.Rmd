@@ -1,0 +1,164 @@
+---
+title: "dernier exo du TP1"
+author: "Marcel MOUDILA, GANTOUNKPO mafoya Jean Noel"
+date: "2022-10-18"
+output: pdf_document
+---
+
+# 4. Application to real data
+
+On importe le jeu de données datacancer, il a au départ 143 lignes et 104 colonnes. On fait une analyse pour les types de données.
+On constate que beaucoup de colonnes sont de type "character", on les transforme alors
+en "factor". On décide d'identifier et de supprimer les colonnes de type factor qui ont qu'une seule modalité. datacancer a maintenant 143 lignes et 98 colonnes.
+
+```{r}
+datacancer <- read.csv("~/Documents/MCAD Marcel/Stat de grande dimension/TP1/datacancer.csv")
+
+dim(datacancer)
+
+
+#str(datacancer)
+
+ind = NULL
+for (j in 1: ncol(datacancer)){
+  if (is.character(datacancer[,j])){
+    datacancer[,j] = factor(datacancer[,j])
+  }
+  if (length(levels(datacancer[,j]))==1){
+    ind = c(ind,j)
+  }
+}
+#print(ind)
+datacancer = datacancer[,-ind]
+dim(datacancer)
+
+
+```
+
+On identifie la variable Y comme cible, on a envie de voir les tables de contingence de Y avec chaque variable catégorielle d'au moins 3 modalités pour vérifier les conditions de faisabilité du test de khi-deux qui impose que les effectifs soient supérieurs à 5.
+
+```{r}
+Y = factor(datacancer$Surv12)
+for (j in 1: ncol(datacancer)){
+  if (is.factor(datacancer[,j])){
+    if (length(levels(datacancer[,j]))>2){
+      print(j)
+      print(table(Y,datacancer[,j]))
+    }
+  }
+}
+```
+
+On regroupe les modalités de certaines variables catégorielles afin qu'on puisse
+avoir les conditions du test de Khi-2 ou du test exact de Fisher vérifiées.
+
+```{r}
+
+levels(datacancer[,12])[c(2,3)] = c("positive_unknow")
+levels(datacancer[,13])[c(1,2,3,4)] = c("autres_stages")
+levels(datacancer[,19])[c(2,3,4)] = c("autres")
+levels(datacancer[,32])[c(1,2,3)] = c("autres")
+levels(datacancer[,34])[c(1,2)] = c("autres")
+levels(datacancer[,33])[c(1,2,3)] = c("autres")
+levels(datacancer[,35])[c(2,3)] = c("autres")
+levels(datacancer[,39])[c(1,2)] = c("autres")
+levels(datacancer[,42])[c(1,2)] = c("autres")
+levels(datacancer[,45])[c(1,2)] = c("autres")
+levels(datacancer[,46])[c(1,2)] = c("autres")
+levels(datacancer[,49])[c(1,2)] = c("autres")
+levels(datacancer[,50])[c(1,2,3)] = c("autres")
+levels(datacancer[,51])[c(1,2)] = c("autres")
+
+Y = factor(datacancer$Surv12)
+for (j in 1: ncol(datacancer)){
+  if (is.factor(datacancer[,j])){
+    if (length(levels(datacancer[,j]))>=2){
+      print(j)
+      print(table(Y,datacancer[,j]))
+    }
+  }
+}
+
+```
+
+On supprime les colonnes 1, 2 qui sont juste des identifiants, on enlève aussi
+la colonne 6 et la colonne 7, qui correspondent respectivement à Surv6 et à Surv12, car ce sont  des variables d'intérêts. On enlève aussi les colonnes 5 (censoros) et 8 (censorTRT), de même que les colonnes 3 (TRT) et 4 (OS). On crée un nouveau datacancer
+où la première colonne est la variable cible suivie dans l'ordre des covariables qualitatives (au nombre de 46) puis des covariables quantitatives (au nombre de 44).
+
+```{r}
+datacancer = datacancer[-c(1,2,3,4,5,6,7,8)]
+
+ind_qual <- sapply(datacancer, function(x) is.factor(x))
+qual <- datacancer[ ,ind_qual]
+
+ind_quant <- sapply(datacancer, function(x) is.numeric(x))
+quant <- datacancer[ ,ind_quant]
+
+datacancer = cbind(Y,qual,quant)
+dim(datacancer)
+```
+
+### 1) Select the qualitative covariates and perform the appropriate tests to see the link with Surv12. Save the p-values in a vector.
+
+On fait un test exact de Fisher dans le cas où la table de contingence est de taille 2x2 et au moins un effectif est plus petit que 5.
+On fait un test de Khi-deux dans le cas où la table de contingence a tous les effectfs supérieurs à 5.
+Lorsque la covariable a au moins 3 modalités, on regroupe certaines modalités si on ne peut pas faire (sans erreur) le test de Khi-deux
+
+```{r}
+
+pval.qual = NULL
+for(j in 1:ncol(qual)){
+  tab = table(Y,qual[,j])
+  if (length(levels(qual[,j]))==2){
+    if ((tab[1,1]<=5 || tab[1,2]<=5) ||( tab[2,1]<=5 || tab[2,2]<=5)){
+      test = fisher.test(Y,qual[,j])
+      pval.qual = c(pval.qual,test$p.value)
+    }
+    else{
+      test = summary(tab)
+      pval.qual = c(pval.qual,test$p.value)
+    }
+  }
+  else{
+    test = summary(tab)
+      pval.qual = c(pval.qual,test$p.value)
+  }
+}
+print(summary(pval.qual))
+hist(pval.qual,20,main="p-value test de lien entre Y et les X_j catégorielles",
+     col = "yellow")
+```
+
+### 2 ) Select the quantitative covariates and perform the appropriate tests to see the link with Surv12. Save the p-values in a vector
+
+On fait un test de comparaison de deux moyennes. 
+
+```{r}
+pval.quant = NULL
+Y = as.numeric(Y)
+for (j in 1:ncol(quant)){
+  test = t.test(Y,quant[,j])
+  pval.quant = c(pval.quant,test$p.value)
+}
+print(summary(pval.quant))
+hist(pval.quant,20,main="p-value test de lien entre Y et les X_j quantitatives",
+     col = "green")
+```
+
+### 3) Aggregate the two vectors and adjust the p-values with different methods. Gives the variables that can explain the survival.
+
+On ajuste les p-valeurs (on les augmente) car on fait des tests multiples. Quelque soit la méthode ("holm", "hochberg", "hommel", "bonferroni", "BH", "BY", etc), les tests significatifs sont ceux dont la p-value ajustée est inférieur à 0.05.
+On crée un code pour récupérer les variables significatives (p-value ajustée < 0.05)
+
+```{r}
+print("BH's method")
+adj.pv = p.adjust(c(pval.qual,pval.quant), method = "BH")
+hist(adj.pv,20, main = "with BH's method ")
+summary(adj.pv)
+indice_variable_expl = which(adj.pv < 0.05)+1
+datacancer2 = datacancer[c(1,indice_variable_expl)]
+dim(datacancer2)
+colnames(datacancer2)
+# sauvegarde du dataset avec Surv12 et les variables selectionnees
+write.csv2(datacancer2, file ="datacancer2.csv")
+```

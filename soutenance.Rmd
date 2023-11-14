@@ -1,0 +1,208 @@
+---
+title: "Projet"
+author: "MOUDILA Marcel"
+date: "`r Sys.Date()`"
+output: beamer_presentation
+---
+
+**Abstract**: This collection of data is part of the RNA-Seq (HiSeq) PANCAN data set, it is a random extraction of gene expressions of patients having different types of tumor: BRCA, KIRC, COAD, LUAD and PRAD.
+
+|                                |                            |
+|--------------------------------|----------------------------|
+| **Data Set Characteristics:**  | Multivariate               |
+| **Attribute Characteristics:** | Real                       |
+| **Associated Tasks:**          | Classification, Clustering |
+| **Number of Instances:**       | 801                        |
+| **Number of Attributes:**      | 20531                      |
+| **Missing Values?**            | N/A                        |
+
+**Data Set Information:**
+
+Samples (instances) are stored row-wise. Variables (attributes) of each sample are RNA-Seq gene expression levels measured by illumina HiSeq platform.
+
+**Attribute Information:**
+
+A dummy name (gene_XX) is given to each attribute. The attributes are ordered consitently with the original submission.
+
+```{r include=FALSE}
+library(data.table)
+data = fread("/home/moudilamarcel/Bureau/data.csv")
+labels = fread("/home/moudilamarcel/Bureau/labels.csv", header = TRUE)
+data = as.data.frame(data[,-1])
+labels = as.data.frame(labels[,-1])
+
+# quelques manipulations
+names(labels) = "Class"
+labels$Class = as.factor(labels$Class)
+df = cbind.data.frame(labels,data)
+```
+
+Steps :
+
+1.  Data analysis
+
+2.  Anova's test and Bonferroni's test to  reduce the size 
+
+3.  missing values analysis
+
+4.  training 1: logistic regression
+
+5.  training 2: random forest
+
+6.  training 3: linear discriminant analysis
+
+# Data analysis
+
+Our dataset has  big size (801,20532), no missing values. The target is of type categorical, this is classification's problem.
+
+|          | BRCA | COAD | KIRC | LUAD | PRAD |
+|----------|------|------|------|------|------|
+| Count    | 300  | 78   | 146  | 141  | 136  |
+|          |      |      |      |      |      |
+
+: Table of count
+
+```{r}
+XtrainFinal <- read.csv2("~/MCAD Marcel/Stat de grande dimension/projet/XtrainFinal.csv")
+X_train = XtrainFinal[,2:ncol(XtrainFinal)]
+
+XtestFinal <- read.csv2("~/MCAD Marcel/Stat de grande dimension/projet/XtestFinal.csv")
+X_test = XtestFinal[,2:ncol(XtestFinal)]
+
+```
+
+
+```{r}
+ytrainFinal <- read.csv("~/MCAD Marcel/Stat de grande dimension/projet/ytrainFinal.csv", sep=";")
+y_train = ytrainFinal[,2]
+
+ytestFinal <- read.csv("~/MCAD Marcel/Stat de grande dimension/projet/ytestFinal.csv", sep=";")
+y_test = ytestFinal[,2]
+```
+
+
+# training 
+
+## Logistic regression
+
+```{r echo=TRUE}
+# cross-validation avec 10 folds
+fitControl <- trainControl(method = "cv", number = 10)
+```
+
+```{r echo=TRUE}
+# régression logistique multinomiale
+
+regLogistique <- train(X_train, y_train, 
+                 method = "multinom",
+                 trControl = fitControl,
+                 metric = "Accuracy",
+                 trace = FALSE)
+```                 
+
+
+```{r}
+regLogistique
+```
+
+```{r}
+pred_regLogistique <- predict(regLogistique, X_test)
+```
+
+
+```{r}
+# score on testing dataset
+postResample(pred = pred_regLogistique, obs = y_test)
+```
+
+## Random Forest 
+
+```{r echo=TRUE}
+# random forest
+randomForest <- train(X_train, y_train, 
+                 method = "rf",
+                 trControl = fitControl,
+                 metric = "Accuracy")
+```
+
+
+```{r}
+randomForest
+```
+
+```{r}
+pred_randomForest <- predict(randomForest, X_test)
+```
+
+
+```{r}
+# score on testing dataset
+postResample(pred = pred_randomForest, obs = y_test)
+```
+
+## linear discriminant analysis
+
+```{r include=FALSE}
+ADL <- train(X_train, y_train, 
+                 method = "lda2",
+                 trControl = fitControl,
+                 metric = "Accuracy")
+```
+
+
+```{r}
+ADL
+```
+
+```{r}
+pred_ADL <- predict(ADL, X_test)
+```
+
+
+```{r}
+# score on testing dataset 
+postResample(pred = pred_ADL, obs = y_test)
+```
+
+# The best: Logistic regression
+
+# Other method : SPLSDA (my preference) 
+
+```{r include=FALSE}
+library(MASS)
+library(rgl)
+library(lattice)
+library(pheatmap)
+library(mixOmics)
+```
+
+```{r include=FALSE}
+X_train = train[,2:18379]
+X_test = test[,2:18379]
+X_train <- X_train[,-highlyCorDescr]
+X_test <- X_test[,-highlyCorDescr]
+
+mat = data.matrix(X_train,rownames.force = NA)
+
+tumeursplsda <-splsda(mat, y_train, ncomp = 3, keepX = rep(10,3))
+```
+
+```{r include=FALSE}
+ind <- which(tumeursplsda$loadings$X[,]!=0,arr.ind=TRUE)
+res <- tumeursplsda$loadings$X[ind[,1],]
+rownames(res) <- ind[,1]
+```
+
+```{r}
+plotIndiv(tumeursplsda, ind.names = y_train, legend = TRUE, ellipse =TRUE)
+```
+
+```{r include=FALSE}
+tumeur.5foldda <- perf(tumeursplsda, validation = "Mfold", folds = 5,
+dist = "all", auc = TRUE)
+```
+
+```{r echo=TRUE}
+tumeur.5foldda$auc
+```
+

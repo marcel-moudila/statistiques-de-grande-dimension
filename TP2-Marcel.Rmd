@@ -1,0 +1,15 @@
+---
+title: "TP2"
+author: "MOUDILA Marcel"
+date: "2022-10-16"
+output: pdf_document
+---
+
+## 5) Modele de selection
+```{python}
+import pandas as pd
+datacancer = pd.read_csv("datacancer.csv",sep=",")
+datacancer2 = datacancer.dropna()
+datacancer2
+```
+

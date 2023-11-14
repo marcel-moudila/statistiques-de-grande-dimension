@@ -1,0 +1,63 @@
+---
+title: "TP2 Stat de grande dimension"
+output: pdf_document
+date: "2022-10-14"
+---
+
+# Preleminiaires : 
+```{r}
+datacancer4 <- read.csv2("~/Documents/MCAD Marcel/Stat de grande dimension/TP2/datacancer4.csv", stringsAsFactors=TRUE)
+
+#on enleve la premiere colonne pour garder que Surv12 et les covariables
+df = datacancer4[,-1]
+
+#on enleve les valeurs manquantes 
+ind=which(apply(is.na(df),1,sum)==0)
+df<-df[ind,]
+dim(df)
+
+#on cree les donnees d'apprentissage et les donnees de test
+perm = sample(1:nrow(df),66)
+train = df[perm,]
+test = df[-perm,]
+```
+
+## 1) Apply forward and backward methods to select variables in the logistic model
+
+```{r warning=FALSE}
+
+#regression logistique 
+reg0<-glm(Surv12 ~ 1 , data=train,family=binomial(link=logit))
+reg1<-glm(Surv12 ~., data=train,family=binomial(link=logit))
+
+#forward's method
+fwd.fit<-step(reg0, scope=formula(reg1), direction="forward",k=log(dim(train)[1]))
+summary(fwd.fit)
+
+
+#backward's method
+bwd.fit<-step(reg1, scope=formula(reg0), direction="backward",k=log(dim(train)[1]))
+summary(bwd.fit)
+
+```
+
+## 2) Construct the confusion matrix and the roc curves of the two resulting models
+
+```{r}
+library(ROCR)
+
+
+```
+
+## 3) Compare these two models by cross-validation using the rate of well classified as a criterion. Do the same with AUC as criteria.
+
+```{r}
+
+```
+
+## 4) Choose the best model to predict the survival
+
+```{r}
+
+```
+

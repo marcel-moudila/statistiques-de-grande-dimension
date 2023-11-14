@@ -1,0 +1,293 @@
+---
+title: "Rapport-TP4-statistiques pour données de grandes dimensions"
+author: "MOUDILA Marcel, Master 2 IMSD"
+date: ""
+output: 
+  pdf_document: 
+    keep_tex: yes
+---
+
+[github.com/marcel-moudila/statistiques-de-grande-dimension](github.com/marcel-moudila/statistiques-de-grande-dimension)
+
+### Exercice 1: PCA
+
+#### question 1-3 :
+
+j'ai commencé sur Python car FactoMineR ne s'installe pas sur ma machine. vu que R est plus convivial pour ce TP, j'ai alors décidé d'utiliser Rstudio Cloud sur le conseil d'une amie. vu que j'avais déjà importé les deux fichiers de données et travaillé sur Python pour obtenir un dataframe, j'ai alors sauvegardé le dataframe en fichier dénommé out.csv je commence donc par importer out.csv (le fichier out.csv se trouve dans mon compte github dont le lien est mentionné ci dessus)
+
+```{r message=FALSE, warning=FALSE}
+
+
+dat <- read.csv("out.csv")
+colnames(dat)[1] <- c("labels")
+dat$labels <- as.factor(dat$labels)
+```
+
+la première colonne contient les labels et le reste des colonnes sont les covariables.
+
+je commence par l'analyse descriptive : pour la variable qualitative (effectif de chaque label), pour les variables quantitatives (moyenne, minimum, maximum, etc)
+
+```{r}
+table(dat$labels)
+```
+
+je vais enlenver les labels dont l'effectif est de 1 , pour celà je crée un vecteur des labels à garder , puis mon nouveau dataset devrait contenir que ces labels dans la première colonne.
+
+```{r}
+vect <- c("BREAST","CNS","COLON","LEUKEMIA","MELANOMA","NSCLC","OVARIAN",
+          "PROSTATE","RENAL")
+numLigne = c()
+for (i in 1:nrow(dat)){
+  lab = dat$labels[i]
+  if (lab %in% vect){
+    numLigne = c(numLigne,i)
+  }
+}
+dat2 <- dat[numLigne,]
+print(dat[1:4,1:7])
+```
+
+#### question 4:
+
+maintenant je fais l'ACP (analyse des composantes principales) pour réduire les dimensions de mon dataset. C'est parceque mes covariables sont quantitatives que l'on peut faire l'ACP. il me faut déterminer le nombre de mes composantes principales, on peut trouver une méthode pour çà, mais on peut aussi se donner un nombre au hasard; ici, le TP demande d'utiliser 12 composantes principales. il faut aussi au mieux que les covariables soient centrées et réduites, on mettra scale.unit=True pour çà; je peux aussi utiliser mes labels comme variable qualitative supplémentaire, elle vient juste pour apporter plus de détails à l'ACP.
+
+```{r message=FALSE, warning=FALSE}
+library(FactoMineR)
+res.pca =PCA(dat2,scale.unit=TRUE, quali.sup=1, ncp=12)
+```
+
+Les deux premières dimensions contiennent près de 18% de l'inertie totale (l'inertie est la variance totale du tableau de données, i.e. la trace de la matrice des corrélations), c'est déjà énorme car on a un grand nombre de covariable. les composantes principales sont les combinaisons linéaires des covariables.
+
+le premier plan factoriel permet de bien distinguer les individus ayant les cancers LEUKEUMIA et MELANOMA.
+
+on peut souhaiter voir beaucoup de choses issues de cette ACP : le cercle des corrélations, la projection des individus sur différents plans factoriels, etc
+
+voyons la projection des individus sur le plan factoriel (2,6) par exemple
+
+```{r message=FALSE, warning=FALSE}
+plot.PCA(res.pca, axes=c(2,6), cex=0.7,habillage=1)
+```
+
+### Exercice 2 : SparsePCA
+
+#### question 1-3:
+
+l'ACP ordinaire donne les composantes principales qui sont les combinaisons linéaires de tous les covariables, c'est son principale inconvénient. Ainsi, l'ACP version Sparse donne les composantes principales que d'une partie des covariables. Faisons l'ACP version Sparse.
+
+Pour celà, on crée d'abord la matrice des valeurs numériques de notre dataset. le language R n'autorise pas de valeurs manquantes dans une matrice, de même les coefficients de la matrice doivent tous être de même type (soit quantitative, soit exclusif qualitative, pas les deux). A priori, tout va bien pour notre dataset car on n'a pas de valeurs manquantes et la trame des données numériques peut être converti en une matrice.
+
+ici, on fait l'ACP Sparse avec la commande spca(), les arguments de cette commande sont détaillés dans "Aide" dans Rstudio, il faut taper spca et choisir elasticnet::spca . on peut voir que l'argument para est un vecteur à K éléments où K est le nombre de composantes principales fixées. chaque élémént i du vecteur para est un entier qui précise le nombre de coefficient non nul dans la combinaison linéaire qui a donné la composante principale comp i.
+
+ici, on prend 3 composantes principales, et on veut 1O coefficients non nuls dans chacun des composantes principales, on trouvera ainsi 30 variables explicatives à garder , on aurait ainsi réduit la dimensionalité de 6830 covariables à 30 covariables, une efficacité redoutable donc !
+
+```{r message=FALSE, warning=FALSE}
+library(elasticnet)
+zz = dat2[,-1]
+mat = data.matrix(zz,rownames.force = NA)
+sparse.pca.result = spca(mat,K=3, type="predictor",sparse ="varnum",
+                          para =c(10,10,10)) 
+                          
+
+```
+
+les composantes principales ici ne sont pas les combinaisons linéaires de toutes les covariables, mais que d'une partie d'entre elles, nous récupérons alors ces covariables.
+
+```{r}
+ind <- which(sparse.pca.result$loadings[,]!=0,arr.ind=TRUE)
+res <- sparse.pca.result$loadings[ind[,1],]
+rownames(res) <- ind[,1]
+res
+```
+
+On peut maintenir considérer un nouveau dataset , résultat de la réduction de dimension effectuée, il contient 59 lignes (le dataset original avait 64 lignes mais on avait écarté les labels qui avaient pour effectif 1, et 6 labels étaient considérés. ce qui fait 64lines - 6 lignes = 59 lignes).
+
+il contient 30 covariables (obtenues grâce à la réduction SparsePCA effectuée).
+
+on lui ajoute les labels à la première colonne.
+
+```{r}
+zz = dat2[,-1] # on enlève la première colonne car sont les labels
+frameCovariable = zz[ind[,1]]
+frameLabels = data.frame(labels = dat2$labels)
+dat3 = cbind(frameLabels,frameCovariable)
+dat3[1:4,1:3] # 3 premières lignes, et 3 premières colonnes de ce nouveau dataset
+
+```
+
+### Exercice 3 : PLS discriminant analysis method
+
+#### question 1-3 :
+
+on commence par installer et charger les packages nécessaires.
+
+```{r message=FALSE, warning=FALSE}
+library(MASS)
+library(rgl)
+library(lattice)
+library(pheatmap)
+library(mixOmics)
+```
+
+Réalisons l'analyse discriminante PLS qui est une autre méthode de réduction de la dimension. la commande pour celà est splsda(). Elle prend en argument les données de la matrice des prédicteurs, de la variable cible , le nombre ncomp de composantes principales à inclure dans le modèle, un vecteur KeepX à ncomp composantes et indiquant par ailleurs le nombre de variables explicatives à garder dans les résultats finaux.Ces autres arguments sont passés par défaut, donc pas besoin de les mentionner dont scale = True qui standardise les données de la matrice des prédicteurs. On a ainsi pour chaque colonne de variables explicatives, la moyenne égale 0 et la variance égale 1. Choisissons ncomp égal 3.
+
+```{r message=FALSE, warning=FALSE}
+cancersplsda <-splsda(mat, dat2$labels, ncomp = 3, keepX = rep(10,3))
+```
+
+récuprérons l'essentiel des résultats.
+
+```{r}
+ind <- which(cancersplsda$loadings$X[,]!=0,arr.ind=TRUE)
+res <- cancersplsda$loadings$X[ind[,1],]
+rownames(res) <- ind[,1]
+res
+```
+
+ainsi, on a 10 coefficients non nuls dans chacun des 3 composantes principales comme on avait mis dans les paramètres de ce modèle. Et les variables explicatives à garder sont au nombre de 30. On remarque que ce ne sont pas les mêmes variables explicatives avec la méthode SparsePCA.
+
+```{r message=FALSE, warning=FALSE}
+plotIndiv(cancersplsda, ind.names = dat2$labels, legend = TRUE, ellipse =TRUE)
+```
+
+on choisirait un nombre optimal de composantes principales à considérer , et on obtiendrait peut-etre une meilleure séparation entre les labels.
+
+On peut néamoins reconsidérer le nouveau dataset tiré de cette réduction de dimensionnalité.
+
+```{r}
+zz = dat2[,-1] # on enlève la première colonne car sont les labels
+frameCovariable = zz[ind[,1]]
+frameLabels = data.frame(labels = dat2$labels)
+dat4 = cbind(frameLabels,frameCovariable)
+dat4[1:4,1:3] # 3 premières lignes, et 3 premières colonnes de ce nouveau dataset
+
+```
+
+#### question 4-6 :
+
+Comme mentionné, le nombre de composantes principales choisi influence les résultats. On va déterminer les différentes erreurs dans les lignes qui suivent.
+
+On utilise pour celà la commande perf() du package mixOmics. Elle évalue la performance des modèles comme PLS, sPLS, PLS-DA, sPLS-DA. Dans cette liste d'exemples, c'est le modèle sPLS-DA qui nous intérèsse pour l'évaluation de la performance relativement aux paramètres et aux données que nous lui avons soumis.
+
+les hyperparamètres de perf() pour le modèle splsda sont détaillés dans "Aide" de Rstudio. Parmi ces hyperparamètres, on a deux choix possibles (soit Mfold pour M-flod cross validation, soit loo pour leave-one-out cross validation) pour l'hyperparamètre validation, quatre choix possibles (all, max.dist, centroids.dist, mahalanobis.dist) pour l'hyperparamètre dist. On mettra l'aire l'hyperparamètre auc = True car par défaut auc = False. auc c'est l'aire sous la courbe ROC, c'est une métrique efficace d'évaluation des modèles dans les problèmes de classification. ici, notre problème est un problème de classification car la variable cible est qualitative. ici, il s'agit d'évaluer quelles composantes principales donnent effectuent les bonnes classifications.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(42)   # pour gérer l'aléatoire 
+cancer.5foldda <- perf(cancersplsda, validation = "Mfold", folds = 5,
+                       dist = "all", auc = TRUE)
+```
+
+on peut lire les valeurs de l'AUC ci-dessous
+
+```{r message=FALSE, warning=FALSE}
+cancer.5foldda$auc
+```
+
+on peut comprendre que la 3ème composante principale gagne car a des valeurs AUC moyenne plus élevées, donc les labels sont mieux classés par les covariables qui sont dans cette composante principale (comp3) avec des coefficients non nuls. Ces covariables sont les 10 dernières colonnes de dat4. Affichons ces 4 premières lignes et ces 10 covariables, on ajoute aussi la première colonne comme labels.
+
+```{r}
+
+dat4[1:4,c(1,22:31)]   # c(1 = labels, 22:31 = les 10 dernières colonnes)
+```
+
+on peut avoir des informations plus visuelles aussi.
+
+```{r message=FALSE, warning=FALSE}
+plot(cancer.5foldda)
+```
+
+```{r message=FALSE, warning=FALSE}
+plot(cancer.5foldda$error.rate[[1]][,1], type = "l", col = "red",
+     xlab = "sPLS-DA components",ylab = "ERROR")
+```
+
+on voit que la 3 ème composante principale gagne car en moyenne le taux de l'erreur de classification est plus petite.
+
+choisissons la méthode leave-one-out cross validation maintenant (validation = "loo"),
+
+```{r message=FALSE, warning=FALSE}
+cancer.looda <- perf(cancersplsda, validation = "loo",
+                     dist = "all", auc = TRUE)
+```
+
+on va supersoser le graphe des erreurs pour 5-fold cross-validation et pour leave-one-out cross validation
+
+```{r}
+plot(cancer.5foldda$error.rate[[1]][,1], type = "l", col = "red",
+     xlab = "sPLS-DA components",ylab = "ERROR")
+par(new=TRUE)
+plot(cancer.looda$error.rate[[1]][,1], type = "l", col = "blue", 
+     xlab = "sPLS-DA components",ylab = "ERROR", axes=F)
+legend(x="topright", 
+       legend=c("5-fold cross validation",
+               "leave-one-out cross validation"), col=c("red","blue"),
+                pch=c(16,16))
+```
+
+### Exercice 4 : PLS, sPLS regression analysis method
+
+voyons maintenant comment faire une régression PLS et la régression Sparse sPLS
+
+#### régression PLS :
+
+pour ne pas se compliquer, on va prendre un dataset de mixOmics, et même copier-coller un code donné en exemple dans "Aide" de Rstudio pour la commande pls(); on va juste ajouter quelques lignes supplémentaires de codes pour savoir un peu ce qu'on manipule.
+
+on charge l'objet "liver.toxicity", où on va récupérer la matrice des covariables et on va la nommer X. la matrice de la variable cible sera nommée Y. regardons tout çà.
+
+```{r}
+data(liver.toxicity)
+X <- liver.toxicity$gene
+Y <- liver.toxicity$clinic
+```
+
+```{r}
+dim(X)
+```
+
+```{r}
+dim(Y)
+```
+
+c'est un exemple différent de tous les exemples que j'ai rencontré depuis tout mes cours, car la variable cible Y (numérique, donc on va faire une régression) n'est pas à une dimension mais à 10 dimensions. regardons les 4 premières observations cette variable cible.
+
+```{r}
+Y[1:4,]
+```
+
+faisons maintenant la regression PLS, et utilisant la méthode 5-fold cross validation pour l'améliorer en faisant des choix des hyperparamètres qui diminuent l'erreur de prédiction.les métriques disponibles sont R2, RSS, RMSE, Q2, etc. car il s'agit de la régression (chaque problème , classification ou régression, a ses métriques)
+
+```{r message=FALSE, warning=FALSE}
+set.seed(1)
+toxicity.pls <- pls(X, Y, ncomp = 3)
+```
+
+```{r message=FALSE, warning=FALSE}
+toxicity.pls.5fold<- perf(toxicity.pls, validation = "Mfold", folds = 5)
+```
+
+```{r}
+toxicity.pls.5fold$measures$R2$values
+```
+
+interprétation : le modèle formé par la première composante principale explique 50% de la variance de la variable dépendante Y1 (BUN.mg.dL.), 60 % de la variance de la variable dépendante Y5 (ALT.IU.L.), 55% de la variance de la variable dépendante Y7 (AST.IU.L.), 50 % de la variance de la variable dépendante Y9 (AST.IU.L.).
+
+le modèle formé par la troisième composante principale explique 47% de la variance de la variable dépendante Y5 (ALT.IU.L.), 44% de la variance de la variable dépendante Y7(AST.IU.L.)
+
+#### la régression sPLS :
+
+on utilise la commande spls() du package mixOmics, ses hyperparamètres sont détaillés dans "Aide" de Rstudio. on fait une réduction de dimensionalité en précisant le nombre de composantes principales. keepX est un hyperparamètre qui est un vecteur de taille la valeur du nombre de composante principales, on y précise le nombre de covariables dans chaque composante principale. keepY est un hyperparamètre qui est un vecteur de taille la valeur du nombre de composante principales, on y précise le nombre de variables cibles que chaque composante principale doit considérer. Les autres hyperparamètres ne sont pas renseignés car on va utiliser ceux par défaut.
+
+```{r}
+set.seed(1)
+toxicity.spls <- spls(X, Y, ncomp = 3, keepX = c(20,50, 50),
+                      keepY = c(10,10, 10))
+```
+
+```{r}
+toxicity.spls.5fold<- perf(toxicity.spls, validation = "Mfold", folds = 5)
+```
+
+```{r}
+toxicity.spls.5fold$measures$R2$values
+```
+
+le modèle formé par la première composante principale explique 53% de la variance de la variable cible BUN.mg.dL., 78% de la variance de la variable cible ALT.IU.L.,75 % de la variance de la variable cible AST.IU.L., 57% de la variance de la variable cible TBA.umol.L.
